@@ -13,7 +13,7 @@ module ffi
 /// Many of these are image manipulation utilities.
 /// These are not minimal amount of code, but expose the least amount of 
 /// surface area to and from Effekt/JavaScript.
-extern jsWeb """
+extern js """
 function $newDrawingCtx(width, height) {
     const canvas = document.createElement("canvas");
     canvas.width = width;
@@ -182,44 +182,56 @@ namespace FFI {
         window.onunhandledrejection = (event) => $showMessage(event.reason, '#f44336');
       }) ()
       """
+      jsNode "undefined"
+
     extern def showMessage(message: String) at io: Unit =
       jsWeb "$showMessage(${message}, '#4c81e3ff')"
+      jsNode """
+      (function() {
+        console.log(${message});
+      }) ()
+      """
 
     extern def getDocumentBody() at {}: _Node =
-      jsWeb "(document.body)" 
+      js "(document.body)"
 
     extern def getDocumentElement() at {}: _Node = 
-      jsWeb "(document.documentElement)"
+      js "(document.documentElement)"
 
     extern def getElementByIdUnsafe(id: String) at io: _Node =
-      jsWeb "document.getElementById(${id})"
+      js "document.getElementById(${id})"
 
     extern def createElement(tag: String) at io: _Node =
-      jsWeb "document.createElement(${tag})"
+      js "document.createElement(${tag})"
 
     extern def createTextNode(text: String) at io: _Node =
-      jsWeb "document.createTextNode(${text})"
+      js "document.createTextNode(${text})"
 
     extern def clone(node: _Node) at io: _Node =
-      jsWeb "(${node}.cloneNode(true))"
+      js "(${node}.cloneNode(true))"
 
     extern def removeContent(node: _Node) at io: Unit =
-      jsWeb "${node}.innerHTML = ''"
+      js "${node}.innerHTML = ''"
 
     extern def appendChild(node: _Node, child: _Node) at io: _Node =
-      jsWeb "${node}.appendChild(${child})"
+      js "${node}.appendChild(${child})"
 
     extern def onClick(node: _Node, handler: () => Unit at {io, global}) at io: Unit =
-      jsWeb "(${node}.addEventListener('click', () => { $effekt.runToplevel((ks, k) => ${handler}(ks, k)) }))"
+      js "(${node}.addEventListener('click', () => { $effekt.runToplevel((ks, k) => ${handler}(ks, k)) }))"
 
     extern def wait(time: Int, handler: () => Unit at {io, global}) at io: Unit =
-      jsWeb "(setTimeout(() => $effekt.runToplevel((ks, k) => ${handler}(ks, k)), ${time}))"
+      js "(setTimeout(() => $effekt.runToplevel((ks, k) => ${handler}(ks, k)), ${time}))"
 
     extern def showAlert(message: String) at io: Unit = 
       jsWeb "alert(${message})"
+      jsNode """
+      (function() {
+        throw new Error(${message});
+      }) ()
+      """
 
     extern def getInputNumber(node: _Node): Int =
-      jsWeb """
+      js """
       (function() {
         const num = ${node}.valueAsNumber
         if (Number.isNaN(num)) {
@@ -229,50 +241,50 @@ namespace FFI {
         }
       }) ()
       """
+
     extern def getInputBool(node: _Node): Bool =
-      jsWeb "${node}.checked"
+      js "${node}.checked"
       
     extern def onWindowResize(handler: () => Unit at {io, global}) at io: Int =
       jsWeb "window.addEventListener('resize', () => { $effekt.runToplevel((ks, k) => ${handler}(ks, k)) })"
-    
+      jsNode "undefined"
 
     extern def windowWidth() at io: Int = 
-      jsWeb "(window.innerWidth)"
+      js "(window.innerWidth)"
 
     extern def windowHeight() at io: Int = 
-      jsWeb "(window.innerHeight)"
+      js "(window.innerHeight)"
 
     extern def setAttribute(node: _Node, key: String, value: String) at io: _Node =
-      jsWeb "(function() { ${node}.setAttribute(${key}, ${value}); return ${node} })()"
+      js "(function() { ${node}.setAttribute(${key}, ${value}); return ${node} })()"
 
     extern def style(node: _Node) at io: _Style = 
-      jsWeb "(${node}.style)"
+      js "(${node}.style)"
 
     extern def setProperty(style: _Style, key: String, value: String) at io: Unit =
-      jsWeb "(function() { ${style}.setProperty(${key}, ${value}); return ${style} })()"
+      js "(function() { ${style}.setProperty(${key}, ${value}); return ${style} })()"
 
     extern def clientWidth(node: _Node): Int =
-      jsWeb "Number(${node}.clientWidth)"
+      js "Number(${node}.clientWidth)"
 
     extern def clientHeight(node: _Node): Int =
-      jsWeb "Number(${node}.clientHeight)"
+      js "Number(${node}.clientHeight)"
 
     extern def setWidth(node: _Node, width: Int): Int =
-      jsWeb "${node}.width = ${width}"
+      js "${node}.width = ${width}"
 
     extern def setHeight(node: _Node, height: Int): Int =
-      jsWeb "${node}.height = ${height}"
-
+      js "${node}.height = ${height}"
   }
   namespace Canvas {
     extern def width(img: _Image) at io: Int =
-      jsWeb "(${img}.width)"
+      js "(${img}.width)"
 
     extern def height(img: _Image) at io: Int =
-      jsWeb "(${img}.height)"
+      js "(${img}.height)"
 
     extern def loadImageFromInputUnsafe(inputNode: _Node, handler: _Image => Unit at {io, global}) at io: Unit =
-      jsWeb
+      js
       """
       (function() {
         const files = ${inputNode}.files
@@ -286,17 +298,17 @@ namespace FFI {
       """
 
     extern def data(img: _Image) at io: _ImageData =
-      jsWeb "(${img}.data)"  
+      js "(${img}.data)" 
 
     extern def get(img: _ImageData, index: Int) at io: Int =
-      jsWeb "${img}[${index}]"
+      js "${img}[${index}]"
 
 
     extern def download(img: _Image, name: String) at io: Unit =
-      jsWeb "$downloadImageDataAsPNG(${img}, ${name})"
+      js "$downloadImageDataAsPNG(${img}, ${name})"
 
     extern def toHTMLImage(img: _Image) at io: _Node =
-      jsWeb "$imageFromImageData(${img})"
+      js "$imageFromImageData(${img})"
       
     extern def blit(
       img: _Image,
@@ -305,29 +317,29 @@ namespace FFI {
       sourceWidth: Int,
       sourceHeight: Int
     ) at io: _Image =
-      jsWeb "($blitFx(${img}, ${sourceX}, ${sourceY}, ${sourceWidth}, ${sourceHeight}))"
+      js "($blitFx(${img}, ${sourceX}, ${sourceY}, ${sourceWidth}, ${sourceHeight}))"
 
     extern def scale(
       img: _Image,
       scale: Int
     ) at io: _Image =
-      jsWeb "($scaleImageData(${img}, ${scale}))"
+      js "($scaleImageData(${img}, ${scale}))"
 
     extern def context2DUnsafe(node: _Node) at io: _Context2D = 
-      jsWeb "(${node}.getContext('2d'))"
+      js "(${node}.getContext('2d'))"
 
     extern def enableImageSmoothing(ctx: _Context2D) at io: Unit =
-      jsWeb "${ctx}.imageSmoothingEnabled = true;"
+      js "${ctx}.imageSmoothingEnabled = true;"
 
     extern def image(ctx: _Context2D, x: Int, y: Int, width: Int, height: Int) at io: _Image = 
-      jsWeb "${ctx}.getImageData(${x},  ${y}, ${width}, ${height})"
+      js "${ctx}.getImageData(${x},  ${y}, ${width}, ${height})"
     
     extern def clearRect(ctx: _Context2D, x: Int, y: Int, width: Int, height: Int) at io: Unit = 
-      jsWeb "${ctx}.clearRect(${x},  ${y}, ${width}, ${height})"
+      js "${ctx}.clearRect(${x},  ${y}, ${width}, ${height})"
 
 
     extern def drawColoredRect(ctx: _Context2D, color: String, x: Int, y: Int, width: Int, height: Int) at io: Unit =
-      jsWeb 
+      js
       """
       (function() {
         ${ctx}.fillStyle = (${color});
@@ -336,33 +348,33 @@ namespace FFI {
       """
 
     extern def drawImage(ctx: _Context2D, data: _Image, x: Int, y: Int) at io: Unit =
-      jsWeb "(${ctx}.putImageData(${data}, ${x}, ${y}));"
+      js "(${ctx}.putImageData(${data}, ${x}, ${y}));"
   }
 
   namespace Array {
     extern def shuffle[T](array: Array[T]) at io: Array[T] = 
-      jsWeb "($shuffled(${array}))"
+      js "($shuffled(${array}))"
 
     extern def pickRandom[T](array: Array[T]) at io: T = 
-      jsWeb "(${array}[Math.floor(Math.random() * ${array}.length)])"
+      js "(${array}[Math.floor(Math.random() * ${array}.length)])"
 
     extern def contains[T](array: Array[T], index: T) at io: Bool =
-      jsWeb "((${array}).includes(${index}))"
+      js "((${array}).includes(${index}))"
 
     extern def copy(array: Array[Int]) at io: Array[Int] =
-      jsWeb "(${array}.slice())"
+      js "(${array}.slice())"
 
-    extern def push[A](array: Array[A], element: A) at io: Unit =
-      jsWeb "(${array}.push(${element}))"
+    extern def push[E](array: Array[E], element: E) at io: Unit =
+      js "(${array}.push(${element}))"
 
-    extern def pop[A](array: Array[A]) at io: A =
-      jsWeb "(${array}.pop())"
+    extern def pop[E](array: Array[E]) at io: E =
+      js "(${array}.pop())"
 
     extern def unique(array: Array[Int]) at io: Array[Int] =
-      jsWeb "([...new Set(${array})])"
+      js "([...new Set(${array})])"
 
     extern def remove(array: Array[Int], element: Int) at io: Unit =
-      jsWeb
+      js
       """
       (function() {
         const arr = ${array}
@@ -376,7 +388,7 @@ namespace FFI {
       """
 
     extern def setToOne(array: Array[Int], element: Int) at io: Unit =
-      jsWeb
+      js
       """
       (function() {
         ${array}.length = 1;

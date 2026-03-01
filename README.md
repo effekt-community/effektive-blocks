@@ -43,6 +43,8 @@ nix build
 
 </details>
 
+
+
 <br>
 
 # Running
@@ -76,3 +78,18 @@ Provide the following inputs in the web interface:
 
 
 These instructions are also available in the web interface.
+
+
+# Testing
+
+You can run the tests using:
+
+```bash
+effekt --max-inline-size 10 --backend js src/test.effekt
+```
+
+Make sure you have the canvas module installed, as it is required for the tests to run:
+
+```bash
+npm install canvas
+```

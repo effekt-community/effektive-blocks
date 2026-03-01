@@ -38,6 +38,9 @@ jobs:
       - name: "Installing npm dependencies..."
         run: npm install canvas
 
+      - name: "Installing npm dependencies..."
+        run: npm install canvas
+
       - name: "Running `nix build ...`..."
         run: nix-fast-build --skip-cached --no-nom --flake ".#packages"
 

@@ -1,9 +1,45 @@
-module src/test
+// module src/test
 
 import test
 
-def main() = mainSuite("lib") {
-  // test("Hello world") {
-  //   assertEqual(helloWorld(), "Hello, world!")
-  // }
+import src/wfc/adjacency
+import src/ffi
+import src/lib/canvas
+import src/lib/canvas
+
+
+extern js """
+const { createCanvas, loadImage } = require('canvas');
+
+function $loadImageDataFromFileToSync(filePath, callback) {
+  const image = $loadImageDataFromFile(filePath);
+  image.then(imageData => callback(imageData));
 }
+
+async function $loadImageDataFromFile(filePath) {
+  const image = await loadImage(filePath);
+  const canvas = createCanvas(image.width, image.height);
+  const ctx = canvas.getContext('2d');
+  
+  ctx.drawImage(image, 0, 0);
+  return ctx.getImageData(0, 0, image.width, image.height);
+}
+
+
+"""
+
+extern def read_file(file: String) at async: _Image =
+    jsNode "$effekt.capture(callback => $loadImageDataFromFileToSync(${file}, callback))"
+
+
+
+def main() = mainSuite("effektive-blocks") {
+  test("wfc-properties") {
+
+    val img = read_file("examples/example_ruleset.png")
+    println(s"Image width: ${img.width().show()}, height: ${img.height().show()}")
+
+    assertTrue(true)
+  }
+}
+
