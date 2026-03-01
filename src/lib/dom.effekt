@@ -68,6 +68,9 @@ def css(node: Node) { scope: => Unit / SetProperty }: Node = {
   node
 }
 
+def isBrowserEnv(): Bool = {
+  FFI::isBrowserEnv()
+}
 
 
 interface HTMLElement {
@@ -274,6 +277,7 @@ def popup[E, T](proxy: on[E]) { prog: => T / Exception[E] }: T / Popup = {
   }
 
 }
+
 /// Unwrap an option or show a popup with the given message
 def orShow[T](self: Option[T], message: String): T / Popup = self match {
   case Some(v) => v

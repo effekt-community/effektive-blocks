@@ -25,11 +25,15 @@ def getTile(index: Int, current: RuledTile, rules: List[RuledTile]): Tile = {
   )
 
   // create a DOM image for rendering (with pixelated scaling)
-  var imgToRender = current.color.toHTMLImage.css {
-    property("image-rendering", "pixelated")
-    property("image-rendering", "crisp-edges")
-    property("width", "100%")
-    property("height", "100%")
+  var imgToRender = if (dom::isBrowserEnv()) {
+    current.color.toHTMLImage.css {
+      property("image-rendering", "pixelated")
+      property("image-rendering", "crisp-edges")
+      property("width", "100%")
+      property("height", "100%")
+    }
+  } else {
+    dom::createElement("none");
   }
   Tile(current.color, imgToRender, index, 1.0, adjacency)
 }

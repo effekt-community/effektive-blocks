@@ -2,18 +2,30 @@
 
 import test
 
-import src/wfc/adjacency
+
 import src/ffi
 import src/lib/canvas
-import src/lib/canvas
+import src/lib/dom
 
+import src/wfc/adjacency
+import src/wfc/wfc2
+import src/wfc/tile
 
-extern js """
-const { createCanvas, loadImage } = require('canvas');
+import bench
+
+extern jsNode """
+const { loadImage } = require('canvas');
 
 function $loadImageDataFromFileToSync(filePath, callback) {
   const image = $loadImageDataFromFile(filePath);
-  image.then(imageData => callback(imageData));
+ image
+    .then(imageData => {
+      callback(imageData);
+    })
+    .catch(err => {
+      callback(err.message || String(err));
+    });
+  
 }
 
 async function $loadImageDataFromFile(filePath) {
@@ -28,18 +40,160 @@ async function $loadImageDataFromFile(filePath) {
 
 """
 
+extern def is_error(result: _Image): Bool =
+    jsNode "typeof ${result} === 'string'"
+
+extern def error_message(result: _Image): String =
+    jsNode "${result}"
+
 extern def read_file(file: String) at async: _Image =
     jsNode "$effekt.capture(callback => $loadImageDataFromFileToSync(${file}, callback))"
 
+def read_image(file: String) at {async, io, global}: _Image / Assertion = {
+  val img = read_file(file)
+  if (is_error(img)) {
+    do assert(false, s"Failed to read image from file ${file}: ${error_message(img)}")
+  }
+  img
+}
+    
 
+
+
+def popup_assert() { scope: => Unit / { Popup, Assertion }  }: Unit / Assertion  = {
+
+  try {
+    scope()
+  } with Popup { message => 
+      do assert(false, message)
+  }
+
+}
+
+// maybe something like this exists..
+def test_fail_any(name: String) { body: => Unit / Assertion } = {
+  val startTime = bench::relativeTimestamp()
+  try {
+    body()
+    val duration = Duration::diff(startTime, bench::relativeTimestamp())
+    do failure(name, "Expected failing test, but it succeeded", duration)
+  } with Assertion {
+    def assert(condition, msg) =
+      if (condition) resume(())
+      else {
+        val duration = Duration::diff(startTime, bench::relativeTimestamp())
+        do success(name, duration)
+      }
+  }
+}
+def test_fail_specific(name: String, failure: String) { body: => Unit / Assertion } = {
+  val startTime = bench::relativeTimestamp()
+  try {
+    body()
+    val duration = Duration::diff(startTime, bench::relativeTimestamp())
+    do failure(name, s"Expected error with message '${failure}', but test succeeded", duration)
+  } with Assertion {
+    def assert(condition, msg) =
+      if (condition) resume(())
+      else {
+        val duration = Duration::diff(startTime, bench::relativeTimestamp())
+        if (msg != failure) {
+          do failure(name, s"Expected failure message '${failure}', but got '${msg}'", duration)
+        } else {
+          do success(name, duration)
+        }
+      }
+  }
+}
+
+
+
+def test_wfc(tile: String, rule: String, pixels: Int, gridSize: Int): Unit / Assertion = {
+  with popup_assert 
+  val color = read_image(tile)
+  val mask = read_image(rule)
+
+  val imageLayout = createLayout(color, mask, pixels)
+  val ruleset = createRuleset(color, mask, imageLayout)
+  val tileset = ruleset.calculateTileSet()
+  val grid = wfcStateGrid(tileset, gridSize)
+
+  try {
+    while (true) {
+      grid.step()
+    }
+  } with fail { => 
+    do Popup("Could not solve WFC with given ruleset")
+  } with stop { => 
+    // good
+  }
+
+}
 
 def main() = mainSuite("effektive-blocks") {
-  test("wfc-properties") {
-
-    val img = read_file("examples/example_ruleset.png")
-    println(s"Image width: ${img.width().show()}, height: ${img.height().show()}")
-
-    assertTrue(true)
+  test("wfc-properties-ok-example-1") {
+    val tile = "examples/example_tileset.png"
+    val rule = "examples/example_ruleset.png"
+    val pixels = 8;
+    val gridSize = 16;
+    test_wfc(tile, rule, pixels, gridSize)
+  }
+  test("wfc-properties-ok-example-2") {
+    val tile = "examples/example_tileset_2.png"
+    val rule = "examples/example_ruleset_2.png"
+    val pixels = 16;
+    val gridSize = 16;
+    test_wfc(tile, rule, pixels, gridSize)
+  }
+  test("wfc-properties-ok-example-3") {
+    val tile = "examples/example_tileset_3.png"
+    val rule = "examples/example_ruleset_3.png"
+    val pixels = 16;
+    val gridSize = 16;
+    test_wfc(tile, rule, pixels, gridSize)
+  }
+  test("wfc-properties-ok-single-tile") {
+    // should succeed when we have tile size of 1
+    val tile = "examples/test_always_failing.png"
+    val rule = "examples/test_always_failing.png"
+    val pixels = 7;
+    val gridSize = 1; 
+    test_wfc(tile, rule, pixels, gridSize)
+  }
+  test("wfc-properties-ok-big-grid") {
+    val tile = "examples/example_tileset.png"
+    val rule = "examples/example_ruleset.png"
+    val pixels = 8;
+    val gridSize = 37;
+    test_wfc(tile, rule, pixels, gridSize)
+  }
+  test_fail_specific("wfc-properties-expect-fail-wrong-aspect-ratio", "The mask image aspect ratio does not match the color image ratio") {
+    val tile = "examples/example_tileset.png"
+    val rule = "examples/example_ruleset_3.png"
+    val pixels = 8;
+    val gridSize = 16;
+    test_wfc(tile, rule, pixels, gridSize)
+  }
+  test_fail_specific("wfc-properties-expect-fail-no-file", "Failed to read image from file does_not_exists.something: No such file or directory") {
+    val tile = "does_not_exists.something"
+    val rule = "examples/example_ruleset_3.png"
+    val pixels = 8;
+    val gridSize = 16;
+    test_wfc(tile, rule, pixels, gridSize)
+  }
+  test_fail_specific("wfc-properties-expect-fail-wrong-pixel-count", "Tile resolution (23) does not divide color image width (128)") {
+    val tile = "examples/example_tileset.png"
+    val rule = "examples/example_ruleset.png"
+    val pixels = 23;
+    val gridSize = 16;
+    test_wfc(tile, rule, pixels, gridSize)
+  }
+  test_fail_specific("wfc-properties-expect-fail-unsolvable", "Could not solve WFC with given ruleset") {
+    val tile = "examples/test_always_failing.png"
+    val rule = "examples/test_always_failing.png"
+    val pixels = 7;
+    val gridSize = 16;
+    test_wfc(tile, rule, pixels, gridSize)
   }
 }
 

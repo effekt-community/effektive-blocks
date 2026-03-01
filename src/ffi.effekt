@@ -13,7 +13,88 @@ module ffi
 /// Many of these are image manipulation utilities.
 /// These are not minimal amount of code, but expose the least amount of 
 /// surface area to and from Effekt/JavaScript.
-extern js """
+
+extern jsNode """
+const { createCanvas, ImageData, Image } = require('canvas');
+
+
+function $newDrawingCtx(width, height) {
+    const canvas = createCanvas(width, height);
+    return canvas.getContext("2d");
+}
+function $drawInto(ctx, data, x, y) {
+  ctx.putImageData(data, x, y);
+}
+function $blitFx(source, sourceX, sourceY, sourceWidth, sourceHeight) {
+    const src = source.data;
+    const srcW = source.width;
+    
+    const result = new ImageData(sourceWidth, sourceHeight);
+    const dst = result.data;
+
+    const rowLength = sourceWidth * 4;
+
+    for (let y = 0; y < sourceHeight; y++) {
+        const srcStart = ((sourceY + y) * srcW + sourceX) * 4;
+        const dstStart = y * rowLength;
+
+        dst.set(src.subarray(srcStart, srcStart + rowLength), dstStart);
+    }
+
+    return result;
+}
+function $shuffled(array) {
+    const result = array.slice();
+
+    for (let i = result.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [result[i], result[j]] = [result[j], result[i]];
+    }
+
+    return result;
+}
+function $imageDataFromFile(file, callback) {
+    throw new Error("Not implemented in Node.js environment");
+}
+function $downloadImageDataAsPNG(imageData, filename) {
+    throw new Error("Not implemented in Node.js environment");
+}
+function $scaleImageData(imageData, scale) {
+  const srcCanvas = createCanvas(imageData.width, imageData.height);
+  const srcCtx = srcCanvas.getContext("2d");
+  srcCtx.putImageData(imageData, 0, 0);
+
+  const dstCanvas = createCanvas(imageData.width * scale, imageData.height * scale);
+  const dstCtx = dstCanvas.getContext("2d");
+
+  dstCtx.imageSmoothingEnabled = false;
+
+  dstCtx.drawImage(
+    srcCanvas,
+    0, 0, srcCanvas.width, srcCanvas.height,
+    0, 0, dstCanvas.width, dstCanvas.height
+  );
+
+  return dstCtx.getImageData(0, 0, dstCanvas.width, dstCanvas.height);
+}
+
+function $showMessage(message, color) {
+  console.log(message);
+}
+
+function $imageFromImageData(imageData) {
+  const canvas = createCanvas(imageData.width, imageData.height);
+  const ctx = canvas.getContext('2d');
+  ctx.putImageData(imageData, 0, 0);
+
+  const img = new Image();
+  img.src = canvas.toDataURL("image/png");
+
+  return img;
+}
+"""
+
+extern jsWeb """
 function $newDrawingCtx(width, height) {
     const canvas = document.createElement("canvas");
     canvas.width = width;
@@ -174,6 +255,10 @@ extern type _Context2D   // lib/canvas.effekt
 
 namespace FFI {
 
+  extern def isBrowserEnv() at io: Bool =
+      jsWeb "true"
+      jsNode "false"
+
   namespace Dom {
     extern def setupPopupHook() at io: Unit =
       jsWeb """
@@ -193,31 +278,40 @@ namespace FFI {
       """
 
     extern def getDocumentBody() at {}: _Node =
-      js "(document.body)"
+      jsWeb "(document.body)"
+      jsNode "undefined"
 
     extern def getDocumentElement() at {}: _Node = 
-      js "(document.documentElement)"
+      jsWeb "(document.documentElement)"
+      jsNode "undefined"
 
     extern def getElementByIdUnsafe(id: String) at io: _Node =
-      js "document.getElementById(${id})"
+      jsWeb "document.getElementById(${id})"
+      jsNode "undefined"
 
     extern def createElement(tag: String) at io: _Node =
-      js "document.createElement(${tag})"
+      jsWeb "document.createElement(${tag})"
+      jsNode "undefined"
 
     extern def createTextNode(text: String) at io: _Node =
-      js "document.createTextNode(${text})"
+      jsWeb "document.createTextNode(${text})"
+      jsNode "undefined"
 
     extern def clone(node: _Node) at io: _Node =
-      js "(${node}.cloneNode(true))"
+      jsWeb "(${node}.cloneNode(true))"
+      jsNode "undefined"
 
     extern def removeContent(node: _Node) at io: Unit =
-      js "${node}.innerHTML = ''"
+      jsWeb "${node}.innerHTML = ''"
+      jsNode "undefined"
 
     extern def appendChild(node: _Node, child: _Node) at io: _Node =
-      js "${node}.appendChild(${child})"
+      jsWeb "${node}.appendChild(${child})"
+      jsNode "undefined"
 
     extern def onClick(node: _Node, handler: () => Unit at {io, global}) at io: Unit =
-      js "(${node}.addEventListener('click', () => { $effekt.runToplevel((ks, k) => ${handler}(ks, k)) }))"
+      jsWeb "(${node}.addEventListener('click', () => { $effekt.runToplevel((ks, k) => ${handler}(ks, k)) }))"
+      jsNode "undefined"
 
     extern def wait(time: Int, handler: () => Unit at {io, global}) at io: Unit =
       js "(setTimeout(() => $effekt.runToplevel((ks, k) => ${handler}(ks, k)), ${time}))"
@@ -231,7 +325,7 @@ namespace FFI {
       """
 
     extern def getInputNumber(node: _Node): Int =
-      js """
+      jsWeb """
       (function() {
         const num = ${node}.valueAsNumber
         if (Number.isNaN(num)) {
@@ -241,40 +335,51 @@ namespace FFI {
         }
       }) ()
       """
+      jsNode "undefined"
 
     extern def getInputBool(node: _Node): Bool =
-      js "${node}.checked"
+      jsWeb "${node}.checked"
+      jsNode "undefined"
       
     extern def onWindowResize(handler: () => Unit at {io, global}) at io: Int =
       jsWeb "window.addEventListener('resize', () => { $effekt.runToplevel((ks, k) => ${handler}(ks, k)) })"
       jsNode "undefined"
 
     extern def windowWidth() at io: Int = 
-      js "(window.innerWidth)"
+      jsWeb "(window.innerWidth)"
+      jsNode "undefined"
 
     extern def windowHeight() at io: Int = 
-      js "(window.innerHeight)"
+      jsWeb "(window.innerHeight)"
+      jsNode "undefined"
 
     extern def setAttribute(node: _Node, key: String, value: String) at io: _Node =
-      js "(function() { ${node}.setAttribute(${key}, ${value}); return ${node} })()"
+      jsWeb "(function() { ${node}.setAttribute(${key}, ${value}); return ${node} })()"
+      jsNode "undefined"
 
     extern def style(node: _Node) at io: _Style = 
-      js "(${node}.style)"
+      jsWeb "(${node}.style)"
+      jsNode "undefined"
 
     extern def setProperty(style: _Style, key: String, value: String) at io: Unit =
-      js "(function() { ${style}.setProperty(${key}, ${value}); return ${style} })()"
+      jsWeb "(function() { ${style}.setProperty(${key}, ${value}); return ${style} })()"
+      jsNode "undefined"
 
     extern def clientWidth(node: _Node): Int =
-      js "Number(${node}.clientWidth)"
+      jsWeb "Number(${node}.clientWidth)"
+      jsNode "undefined"
 
     extern def clientHeight(node: _Node): Int =
-      js "Number(${node}.clientHeight)"
+      jsWeb "Number(${node}.clientHeight)"
+      jsNode "undefined"
 
     extern def setWidth(node: _Node, width: Int): Int =
-      js "${node}.width = ${width}"
+      jsWeb "${node}.width = ${width}"
+      jsNode "undefined"
 
     extern def setHeight(node: _Node, height: Int): Int =
-      js "${node}.height = ${height}"
+      jsWeb "${node}.height = ${height}"
+      jsNode "undefined"
   }
   namespace Canvas {
     extern def width(img: _Image) at io: Int =
@@ -284,8 +389,7 @@ namespace FFI {
       js "(${img}.height)"
 
     extern def loadImageFromInputUnsafe(inputNode: _Node, handler: _Image => Unit at {io, global}) at io: Unit =
-      js
-      """
+      jsWeb """
       (function() {
         const files = ${inputNode}.files
         const f = imageData => { $effekt.runToplevel((ks, k) => ${handler}(imageData, ks, k)) };
@@ -296,6 +400,7 @@ namespace FFI {
         }
       }) ()
       """
+      jsNode "undefined"
 
     extern def data(img: _Image) at io: _ImageData =
       js "(${img}.data)" 
