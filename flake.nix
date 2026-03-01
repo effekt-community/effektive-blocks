@@ -36,7 +36,7 @@
         # Chooses the correct Effekt package.
         effektBuild = effekt-lib.getEffekt effektConfig;
       in {
-        packages.default = effekt-lib.buildEffektPackage {
+        packages.default = (effekt-lib.buildEffektPackage {
           inherit pname version;
           src = ./.;
           main = mainFile;
@@ -45,7 +45,11 @@
 
           effekt = effektBuild;
           inherit (effektConfig) backends;
-        };
+        }).overrideAttrs (old: {
+          preCheck = ''
+            npm install canvas
+          '';
+        });
 
         devShells.default = effekt-lib.mkDevShell {
           effekt = effektBuild;
