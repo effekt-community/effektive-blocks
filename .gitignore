@@ -5,3 +5,7 @@ out
 result
 result-*
 .vscode/settings.json
+
+# npm
+node_modules
+package-lock.json
