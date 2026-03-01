@@ -178,8 +178,8 @@ def createWFCContext(
   val draw         =    not(drawNode.boolFromInputElement())
   val save         =    saveNode.boolFromInputElement()
 
-  if (draw && gridSize > 16) {
-    do Popup("Size to lange. Your browser does not support this. Disable drawing. ")
+  if (draw && gridSize >= 16) {
+    do Popup("Size to lange. Your browser does not support this. Enable Automatic mode. ")
   }
 
   canvas::loadImageFromInputElement(color, box { color? => 
@@ -203,7 +203,7 @@ def createWFCContext(
       val state = ref(wfcStateGrid(tileset, gridSize))
 
       //calculate the speed
-      val maxWait = 1000
+      val maxWait = 200
       val waitTime = (maxWait.toDouble * (1.0 - speedPercent)).max(0.0).toInt
 
       // create HMTL elements to render the state into
@@ -387,7 +387,6 @@ def createPageContent(body: Node): Unit = {
     }
     addCheckboxInputGroup("Download", save).attributes {
       attribute("type", "checkbox")
-      attribute("checked", "true")
     }
     runButton.insert
     .children {
