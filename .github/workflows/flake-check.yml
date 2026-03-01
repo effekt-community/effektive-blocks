@@ -34,6 +34,9 @@ jobs:
       - name: "Setting up packages..."
         run: |
           nix profile install nixpkgs#nix-fast-build # parallel nix builder
+          
+      - name: "Installing npm dependencies..."
+        run: npm install canvas
 
       - name: "Running `nix build ...`..."
         run: nix-fast-build --skip-cached --no-nom --flake ".#packages"
