@@ -86,7 +86,7 @@ def adjacencyOfDirection(self: Tile, direction: Direction): AdjacencyList = dire
 }
 
 
-def show(coords: Vec2I): String = 
+def show_vec(coords: Vec2I): String = 
   s"Vec2(${coords.first.show}, ${coords.second.show})"
 
 

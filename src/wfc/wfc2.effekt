@@ -65,7 +65,7 @@ def collapseAt(self: StateGrid, coords: Vec2I): Unit = {
     // and adds the element, so it only contains this element. In place! (important!)
     case Some(v) => arrays::setToOne(tiles, v)
     case None() => {
-      panic("got no tiles at " ++ coords.show)   
+      panic("got no tiles at " ++ coords.show_vec)   
     }
   }
 }
