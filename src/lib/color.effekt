@@ -10,17 +10,13 @@ module color
 record Color(r: Int, g: Int, b: Int, a: Int)
 
 
-def colorFormat { str: => Unit / {literal, splice[Double], splice[Int]}}: String = stringBuffer  {
+def colorFormat { str: => Unit / {write, splice[Double], splice[Int]}}: String = stringBuffer  {
   try {
     str()
-    do flush()
-  }
-  with literal { s => resume(do write(s)) }
-  with splice[Int] { i => 
+  } with splice[Int] { i =>
     val format = i.max(0).min(255).show
     resume(do write(format))
-  }
-  with splice[Double] { d => 
+  } with splice[Double] { d =>
     val format = (d / 255.0).max(0.0).min(1.0).show
     resume(do write(format))
   }

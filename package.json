@@ -1,0 +1,7 @@
+{
+  "name": "effektive-blocks",
+  "version": "1.0.0",
+  "dependencies": {
+    "canvas": "^3.2.3"
+  }
+}

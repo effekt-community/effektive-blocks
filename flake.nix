@@ -35,6 +35,21 @@
 
         # Chooses the correct Effekt package.
         effektBuild = effekt-lib.getEffekt effektConfig;
+
+        # Build npm dependencies within Nix
+        node-deps = pkgs.buildNpmPackage {
+          pname = "${pname}-deps";
+          inherit version;
+          src = ./.;
+
+          npmDepsHash = "sha256-o3v6m6m3MV8ZXmLIEvPp3Gj6Vq6K6240dLNACtSYDRc=";
+          
+          dontNpmBuild = true;
+
+          # Provide all the native C/C++ libraries the 'canvas' module needs
+          buildInputs = with pkgs; [ cairo pango pixman libjpeg giflib librsvg ];
+          nativeBuildInputs = with pkgs; [ pkg-config python3 ];
+        };
       in {
         packages.default = effekt-lib.buildEffektPackage {
           inherit pname version;
@@ -45,6 +60,7 @@
 
           effekt = effektBuild;
           inherit (effektConfig) backends;
+          buildInputs = [ node-deps ];
         };
 
         devShells.default = effekt-lib.mkDevShell {
