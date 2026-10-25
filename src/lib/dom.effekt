@@ -122,14 +122,10 @@ def insert(node: Node): Node / HTMLElement = {
   node
 }
 
-def text { str: => Unit / {literal, splice[Int], splice[Double], splice[Bool], splice[Char], splice[Byte]}}: Unit / HTMLElement = {
+def text { str: => Unit / {write, splice[Int], splice[Double], splice[Bool], splice[Char], splice[Byte]}}: Unit / HTMLElement = {
 
   do Text(stringBuffer  {
-    try {
-      str()
-      do flush()
-    }
-    with literal { s => resume(do write(s)) }
+    try { str() }
     with splice[Int] { i => resume(do write(i.show))}
     with splice[Double] { i => resume(do write(i.show))}
     with splice[Bool] { i => resume(do write(i.show))}

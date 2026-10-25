@@ -78,7 +78,7 @@ def test_fail_any(name: String) { body: => Unit / Assertion } = {
     val duration = Duration::diff(startTime, bench::relativeTimestamp())
     do failure(name, "Expected failing test, but it succeeded", duration)
   } with Assertion {
-    def assert(condition, msg) =
+    def assert(condition, msg, pos) =
       if (condition) resume(())
       else {
         val duration = Duration::diff(startTime, bench::relativeTimestamp())
@@ -93,7 +93,7 @@ def test_fail_specific(name: String, failure: String) { body: => Unit / Assertio
     val duration = Duration::diff(startTime, bench::relativeTimestamp())
     do failure(name, s"Expected error with message '${failure}', but test succeeded", duration)
   } with Assertion {
-    def assert(condition, msg) =
+    def assert(condition, msg, pos) =
       if (condition) resume(())
       else {
         val duration = Duration::diff(startTime, bench::relativeTimestamp())
