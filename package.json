@@ -1,6 +1,5 @@
 {
-  "name": "effektive-blocks",
-  "version": "1.0.0",
+  "private": true,
   "dependencies": {
     "canvas": "^3.2.3"
   }
