@@ -84,6 +84,10 @@
           devShell = effekt-lib.mkDevShell {
             effekt = effektBuild;
             inherit (effektConfig) backends;
+
+            ## Link 'nodeModules' into the project (for the tests)
+            packages = [ pkgs.importNpmLock.linkNodeModulesHook ];
+            npmDeps = nodeModules;
           };
         };
 
