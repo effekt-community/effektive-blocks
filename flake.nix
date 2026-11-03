@@ -63,7 +63,6 @@
             tests = testFiles;
             meta.platforms = systems;
 
-            effektFlags = [ "--no-optimize" "--max-inline-size" "10" ];
             ## The tests run on Node.js and 'require' 'canvas'
             makeWrapperArgs = [ "--prefix" "NODE_PATH" ":" "${nodeModules}/node_modules" ];
 
