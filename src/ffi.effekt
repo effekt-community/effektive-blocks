@@ -4,7 +4,6 @@ module ffi
  FFI interface. These are never used directly, but reexported in other files:
  - lib/dom.effekt
  - lib/canvas.effekt
- - lib/array.effekt
  - lib/color.effekt
 */
 
@@ -39,16 +38,6 @@ function $blitFx(source, sourceX, sourceY, sourceWidth, sourceHeight) {
         const dstStart = y * rowLength;
 
         dst.set(src.subarray(srcStart, srcStart + rowLength), dstStart);
-    }
-
-    return result;
-}
-function $shuffled(array) {
-    const result = array.slice();
-
-    for (let i = result.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [result[i], result[j]] = [result[j], result[i]];
     }
 
     return result;
@@ -118,16 +107,6 @@ function $blitFx(source, sourceX, sourceY, sourceWidth, sourceHeight) {
         const dstStart = y * rowLength;
 
         dst.set(src.subarray(srcStart, srcStart + rowLength), dstStart);
-    }
-
-    return result;
-}
-function $shuffled(array) {
-    const result = array.slice(); // make a shallow copy
-
-    for (let i = result.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [result[i], result[j]] = [result[j], result[i]];
     }
 
     return result;
@@ -454,52 +433,6 @@ namespace FFI {
 
     extern def drawImage(ctx: _Context2D, data: _Image, x: Int, y: Int) at io: Unit =
       js "(${ctx}.putImageData(${data}, ${x}, ${y}));"
-  }
-
-  namespace Array {
-    extern def shuffle[T](array: Array[T]) at io: Array[T] = 
-      js "($shuffled(${array}))"
-
-    extern def pickRandom[T](array: Array[T]) at io: T = 
-      js "(${array}[Math.floor(Math.random() * ${array}.length)])"
-
-    extern def contains[T](array: Array[T], index: T) at io: Bool =
-      js "((${array}).includes(${index}))"
-
-    extern def copy(array: Array[Int]) at io: Array[Int] =
-      js "(${array}.slice())"
-
-    extern def push[E](array: Array[E], element: E) at io: Unit =
-      js "(${array}.push(${element}))"
-
-    extern def pop[E](array: Array[E]) at io: E =
-      js "(${array}.pop())"
-
-    extern def unique(array: Array[Int]) at io: Array[Int] =
-      js "([...new Set(${array})])"
-
-    extern def remove(array: Array[Int], element: Int) at io: Unit =
-      js
-      """
-      (function() {
-        const arr = ${array}
-        const e = ${element}
-        const index = arr.indexOf(e);
-        if (index !== -1) {
-          arr[index] = arr[arr.length - 1];
-          arr.pop();
-        }
-      } ())
-      """
-
-    extern def setToOne(array: Array[Int], element: Int) at io: Unit =
-      js
-      """
-      (function() {
-        ${array}.length = 1;
-        ${array}[0] = ${element};
-      } ())
-      """
   }
 
 

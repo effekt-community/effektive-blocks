@@ -10,7 +10,6 @@ module wfc1
 
 import src/wfc/tile
 import src/lib/canvas
-import src/lib/array
 import src/lib/dom
 
 namespace WFC {
@@ -47,7 +46,7 @@ def canInsert(self: WFC::Grid, x: Int, y: Int, tile: Tile): Bool = valueBoundary
 }
 
 def canConnectTo(source: Tile, target: Tile, dir: Direction): Bool = {
-  source.adjacencyOfDirection(dir).contains(target.index)
+  source.adjacencyOfDirection(dir).any { i => i == target.index }
 }
 
 
@@ -97,6 +96,17 @@ def solve(board: WFC::Grid): WFC::Grid / Search = {
 }
 
 
+/// a shuffled copy of `arr` (Fisher-Yates)
+def shuffled[T](arr: Array[T]): Array[T] = {
+  val result = arr.copy
+  each(1, result.size) { k =>
+    val i = result.size - k
+    val j = (random() * (i + 1).toDouble).floor
+    result.swap(i, j)
+  }
+  result
+}
+
 def findSolution(initial: WFC::Grid, tileset: TileSet): Option[WFC::Grid] = {
   val tiles = tileset.tiles
   try {
@@ -104,9 +114,9 @@ def findSolution(initial: WFC::Grid, tileset: TileSet): Option[WFC::Grid] = {
   } with Search {
     def fail() = None()
     def pickTile() = {
-      val shuffled = shuffle(tiles)
+      val order = shuffled(tiles)
       valueBoundary[Option[WFC::Grid]] {
-        array::foreach(shuffled) { tile =>
+        array::foreach(order) { tile =>
           resume(tile) match {
             case Some(solution) => do Break(Some(solution))
             case None() => ()

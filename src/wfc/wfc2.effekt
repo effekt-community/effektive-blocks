@@ -7,7 +7,6 @@ module wfc2
 */
 
 import src/wfc/tile
-import src/lib/array
 import src/lib/canvas
 import src/lib/color
 
@@ -28,6 +27,11 @@ def offset(coords: Vec2I, direction: Direction): Vec2I = {
 
 def infixEq(a: Vec2I, b: Vec2I): Bool = 
   a.first == b.first && a.second == b.second
+
+/// pick a uniformly random element, or None if the array is empty
+def pickRandom[T](arr: Array[T]): Option[T] =
+  if (arr.size == 0) None()
+  else Some(arr.get((random() * arr.size.toDouble).floor))
 
 def foreachCell(self: StateGrid) { coords: Vec2I => Unit }: Unit = {
   self.cells.foreachIndex { (x, c) =>
@@ -55,15 +59,14 @@ def getMinEntropyCoords(self: StateGrid): Option[Vec2I] = {
       }
   }
   // shuffle to get random values each time
-  arrays::pickRandom(array::fromList(best))
+  pickRandom(array::fromList(best))
 }
 
 def collapseAt(self: StateGrid, coords: Vec2I): Unit = {
   val tiles = self.tilesAt(coords)
-  arrays::pickRandom(tiles) match {
-    // removes all element from the list 
-    // and adds the element, so it only contains this element. In place! (important!)
-    case Some(v) => arrays::setToOne(tiles, v)
+  pickRandom(tiles) match {
+    // replace the cell's tiles by only this element
+    case Some(v) => self.setTilesAt(coords, array(1, v))
     case None() => {
       panic("got no tiles at " ++ coords.show_vec)   
     }
@@ -81,22 +84,23 @@ def neighbors(self: StateGrid, coords: Vec2I) { coord: (Vec2I, Direction) => Uni
   }
 }
 
-def tilesAt(self: StateGrid, coords: Vec2I): Array[TileIndex] = {
-  val (x, y) = coords
-  return self.cells.get(x).get(y)
-}
+def tilesAt(self: StateGrid, coords: Vec2I): Array[TileIndex] =
+  self.cells.get(coords.first).get(coords.second)
 
-def allNeigbors(self: StateGrid, coords: Vec2I, dir: Direction): Array[TileIndex] = {
-  var list = Nil()
+def setTilesAt(self: StateGrid, coords: Vec2I, tiles: Array[TileIndex]): Unit =
+  self.cells.get(coords.first).set(coords.second, tiles)
+
+/// all tiles allowed in direction `dir` of the cell at `coords`, as a mask indexed by TileIndex
+def allNeigbors(self: StateGrid, coords: Vec2I, dir: Direction): Array[Bool] = {
+  val allowed = array(self.tileset.tiles.size, false)
 
   self.tilesAt(coords).foreach { tileIndex => 
     val tile = self.tileset.tiles.get(tileIndex)
     tile.adjacencyOfDirection(dir).foreach { n => 
-      list = Cons(n , list)
+      allowed.set(n, true)
     }
-    ()
   }
-  list.fromList.unique
+  allowed
 }
 
 def constrain(self: StateGrid, coords: Vec2I, index: TileIndex): Unit / fail = {
@@ -105,35 +109,30 @@ def constrain(self: StateGrid, coords: Vec2I, index: TileIndex): Unit / fail = {
     do fail()
   }
 
-  arrays::remove(toReduce, index)
+  self.setTilesAt(coords, toReduce.filtered { t => t != index })
 }
 
 
 def propagate(self: StateGrid, coords: Vec2I): Unit / fail = {
-  var stack = array::array(1, (0, 0))
-  stack.push(coords)
+  var stack: List[Vec2I] = Cons(coords, Nil())
 
-  with boundary
-  while (true) {
-    var element = stack.pop() match {
-      case Some(s) => s
-      case None() => do stop()
-    }
-    
+  while (stack is Cons(element, rest)) {
+    stack = rest
+
     self.neighbors(element) { (neighborCoords, direction) =>
-      var neighborTiles = arrays::copy(self.tilesAt(neighborCoords))
-      var currentNeighborsByDir = self.allNeigbors(element, direction)
+      // cells are replaced, never mutated, so this is a stable snapshot
+      val neighborTiles = self.tilesAt(neighborCoords)
+      val currentNeighborsByDir = self.allNeigbors(element, direction)
 
       neighborTiles.foreach { neighborTile =>
-        val possible? = arrays::contains(currentNeighborsByDir, neighborTile) 
+        val possible? = currentNeighborsByDir.get(neighborTile)
         if (not(possible?)) {
           self.constrain(neighborCoords, neighborTile)
-          if (not(stack.contains(neighborCoords))) {
-            stack.push(neighborCoords)
+          if (not(stack.any { c => c == neighborCoords })) {
+            stack = Cons(neighborCoords, stack)
           }
         }
       }
-      
     }
   }
 }
@@ -145,11 +144,9 @@ def propagate(self: StateGrid, coords: Vec2I): Unit / fail = {
 
 /// create a new fully open state grid
 def wfcStateGrid(tileset: TileSet, size: Int): StateGrid = {
-  var numbers = array::build(tileset.tiles.size) { i => i }
-
   val cells = array::build(size) { _ =>
     array::build(size) { _ => 
-      arrays::copy(numbers)
+      array::build(tileset.tiles.size) { i => i }
     }
   }
   StateGrid(tileset, size, cells)
@@ -169,8 +166,7 @@ def isCollapsed(self: StateGrid): Bool = valueBoundary {
 
 /// collapse cell at coords to specific element, should be valid (has to be checked before)
 def collapseAtSpecific(self: StateGrid, coords: Vec2I, element: TileIndex): Unit = {
-  val tiles = self.tilesAt(coords)
-  arrays::setToOne(tiles, element)
+  self.setTilesAt(coords, array(1, element))
 }
 
 /// perform one iteration at coords: collapse + propagate
